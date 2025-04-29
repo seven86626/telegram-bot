@@ -159,7 +159,4 @@ reply_rules = {
         "button": None
     }
 }
-None
-    }
-}
 
