@@ -1,3 +1,4 @@
+import requests  # 如果還沒 import 記得放在最上面
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
@@ -215,9 +216,40 @@ def index():
 def run_flask():
     app.run(host="0.0.0.0", port=8080)
 
+# ➤ 新增錯誤追蹤處理器
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    print(f"❌ 發生錯誤：{context.error}")
+
+# ➤ 啟動 Flask + Telegram Bot
 if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
     print("✅ 啟動 Telegram 機器人...")
-    app_bot = ApplicationBuilder().token(TOKEN).build()
+
     app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
-    app_bot.run_polling()
+    app_bot.add_error_handler(error_handler)  # 加入錯誤處理器 ✅
+
+    # 設定 Webhook URL
+    WEBHOOK_URL = f"https://telegram-bot-j6nl.onrender.com/{TOKEN}"
+    try:
+        res = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
+        print("🔗 Webhook 設定結果：", res.json())
+    except Exception as e:
+        print("🚫 Webhook 設定錯誤：", e)
+
+    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(app_bot.initialize())
+    loop.create_task(app_bot.start())
+    import threading, time
+import requests
+
+def keep_awake():
+    while True:
+        try:
+            requests.get("https://telegram-bot-j6nl.onrender.com/")
+        except:
+            pass
+        time.sleep(600)  # 每10分鐘 ping 一次
+
+threading.Thread(target=keep_awake).start()
+
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
