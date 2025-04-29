@@ -232,7 +232,7 @@ async def webhook():
         return "ok"
 
 # 啟動 Flask + Telegram Bot
-if name == "__main__":
+if __name__ == "__main__":
     print("✅ 啟動 Telegram 機器人...")
 
     app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
