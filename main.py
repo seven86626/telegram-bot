@@ -8,6 +8,7 @@ TOKEN = os.environ["BOT_TOKEN"]
 CREATOR_ID = 7157918161  # 你的 Telegram ID
 
 app = Flask(__name__)
+app_bot = ApplicationBuilder().token(TOKEN).build()  # ⬅️ 提前建立！
 
 # 純 Python 字典關鍵字資料（圖片為上傳至伺服器的檔名）
 reply_rules = {
