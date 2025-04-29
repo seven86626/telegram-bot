@@ -241,11 +241,10 @@ if __name__ == "__main__":
     loop.run_until_complete(app_bot.initialize())
     loop.create_task(app_bot.start())
 
-    # 這段是新加的！註冊 Webhook
-    import requests
-    WEBHOOK_URL = f"{os.environ['APP_URL']}/{TOKEN}"
-    set_webhook = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
-    print(set_webhook.json())
+import requests  # <-- 請放在程式最上方和 os 一起 import
+
+WEBHOOK_URL = f"https://telegram-bot-j6nl.onrender.com/{TOKEN}"
+requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
 
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
