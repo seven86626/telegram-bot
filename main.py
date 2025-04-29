@@ -9,7 +9,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filte
 
 # Telegram Bot 設定
 TOKEN = os.environ["BOT_TOKEN"]
-CREATOR_ID = 7157918161A
+CREATOR_ID = 7157918161
 
 app = Flask(__name__)
 app_bot = ApplicationBuilder().token(TOKEN).build()
