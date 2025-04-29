@@ -15,7 +15,6 @@ app = Flask(__name__)
 app_bot = ApplicationBuilder().token(TOKEN).build()
 
 # ➤ 關鍵字回覆函式（請依你原本定義放這裡）
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 reply_rules = {
     "NEW": {
         "media": ["NEW.jpg"],
