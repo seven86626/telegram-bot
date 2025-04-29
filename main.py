@@ -159,4 +159,86 @@ reply_rules = {
         "button": None
     }
 }
+# 主處理函式
+async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if msg is None or msg.text is None:
+        return
+
+    # 私人聊天，發送 file_id
+    if msg.chat.type == "private" and msg.from_user.id == CREATOR_ID:
+        if msg.photo:
+            await msg.reply_text(f"📸 圖片 file_id：{msg.photo[-1].file_id}")
+        elif msg.video:
+            await msg.reply_text(f"🎥 影片 file_id：{msg.video.file_id}")
+        return
+
+    # 群組訊息處理
+    if msg.chat.type not in ["group", "supergroup"]:
+        return
+
+    key = msg.text.strip()
+    if key not in reply_rules:
+        return
+
+    rule = reply_rules[key]
+    medias = rule.get("media", [])
+    text = rule.get("text")
+    button = rule.get("button")
+
+    reply_markup = None
+    if button and button.get("text") and button.get("url"):
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]])
+
+    if len(medias) > 1:
+        group = []
+        for f in medias:
+            ext = f.split(".")[-1].lower()
+            if ext in ["jpg", "jpeg", "png"]:
+                with open(f, "rb") as fobj:
+                    group.append(InputMediaPhoto(fobj.read()))
+            elif ext in ["mp4", "mov"]:
+                with open(f, "rb") as fobj:
+                    group.append(InputMediaVideo(fobj.read()))
+        await msg.reply_media_group(group)
+        if text:
+            await msg.reply_text(text, reply_markup=reply_markup)
+        elif reply_markup:
+            await msg.reply_text("請點擊下方按鈕", reply_markup=reply_markup)
+    elif len(medias) == 1:
+        f = medias[0]
+        ext = f.split(".")[-1].lower()
+        with open(f, "rb") as fobj:
+            if ext in ["jpg", "jpeg", "png"]:
+                await msg.reply_photo(fobj, caption=text, reply_markup=reply_markup)
+            elif ext in ["mp4", "mov"]:
+                await msg.reply_video(fobj, caption=text, reply_markup=reply_markup)
+    else:
+        if text:
+            await msg.reply_text(text, reply_markup=reply_markup)
+        elif reply_markup:
+            await msg.reply_text("請點擊下方按鈕", reply_markup=reply_markup)
+
+# Flask 路由設定
+@app.route("/")
+def index():
+    return "Bot Running"
+
+@app.route(f"/{TOKEN}", methods=["POST"])
+async def webhook():
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), app_bot.bot)
+        await app_bot.process_update(update)
+        return "ok"
+
+# 啟動 Flask + Telegram Bot
+if name == "__main__":
+    print("✅ 啟動 Telegram 機器人...")
+
+    app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(app_bot.initialize())
+    loop.create_task(app_bot.start())
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
