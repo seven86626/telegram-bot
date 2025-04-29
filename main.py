@@ -1,17 +1,15 @@
-from flask import Flask, request
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
-import asyncio
+from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+import threading
 import os
 
 TOKEN = os.environ["BOT_TOKEN"]
 CREATOR_ID = 7157918161  # 你的 Telegram ID
 
-# 建立 Flask App 和 Telegram Bot
 app = Flask(__name__)
-app_bot = ApplicationBuilder().token(TOKEN).build()
 
-# 純 Python 字典關鍵字資料
+# 純 Python 字典關鍵字資料（圖片為上傳至 Replit 的檔名）
 reply_rules = {
     "NEW": {
         "media": ["NEW.jpg"],
@@ -165,7 +163,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if msg is None or msg.text is None:
         return
 
-    # 私人聊天，發送 file_id
+    # 回傳圖片檔 file_id 給創建者使用
     if msg.chat.type == "private" and msg.from_user.id == CREATOR_ID:
         if msg.photo:
             await msg.reply_text(f"📸 圖片 file_id：{msg.photo[-1].file_id}")
@@ -173,7 +171,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.reply_text(f"🎥 影片 file_id：{msg.video.file_id}")
         return
 
-    # 群組訊息處理
     if msg.chat.type not in ["group", "supergroup"]:
         return
 
@@ -188,63 +185,39 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = None
     if button and button.get("text") and button.get("url"):
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]])
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]] )
 
     if len(medias) > 1:
         group = []
         for f in medias:
             ext = f.split(".")[-1].lower()
             if ext in ["jpg", "jpeg", "png"]:
-                with open(f, "rb") as fobj:
-                    group.append(InputMediaPhoto(fobj.read()))
+                group.append(InputMediaPhoto(open(f"{f}", "rb")))
             elif ext in ["mp4", "mov"]:
-                with open(f, "rb") as fobj:
-                    group.append(InputMediaVideo(fobj.read()))
+                group.append(InputMediaVideo(open(f"{f}", "rb")))
         await msg.reply_media_group(group)
-        if text:
-            await msg.reply_text(text, reply_markup=reply_markup)
-        elif reply_markup:
-            await msg.reply_text("請點擊下方按鈕", reply_markup=reply_markup)
+        if text or reply_markup:
+            await msg.reply_text(text or "", reply_markup=reply_markup)
     elif len(medias) == 1:
         f = medias[0]
         ext = f.split(".")[-1].lower()
-        with open(f, "rb") as fobj:
-            if ext in ["jpg", "jpeg", "png"]:
-                await msg.reply_photo(fobj, caption=text, reply_markup=reply_markup)
-            elif ext in ["mp4", "mov"]:
-                await msg.reply_video(fobj, caption=text, reply_markup=reply_markup)
-    else:
-        if text:
-            await msg.reply_text(text, reply_markup=reply_markup)
-        elif reply_markup:
-            await msg.reply_text("請點擊下方按鈕", reply_markup=reply_markup)
+        if ext in ["jpg", "jpeg", "png"]:
+            await msg.reply_photo(open(f, "rb"), caption=text, reply_markup=reply_markup)
+        elif ext in ["mp4", "mov"]:
+            await msg.reply_video(open(f, "rb"), caption=text, reply_markup=reply_markup)
+    elif text:
+        await msg.reply_text(text, reply_markup=reply_markup)
 
-# Flask 路由設定
 @app.route("/")
 def index():
     return "Bot Running"
 
-@app.route(f"/{TOKEN}", methods=["POST"])
-async def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), app_bot.bot)
-        await app_bot.process_update(update)
-        return "ok"
+def run_flask():
+    app.run(host="0.0.0.0", port=8080)
 
-# 啟動 Flask + Telegram Bot
 if __name__ == "__main__":
+    threading.Thread(target=run_flask).start()
     print("✅ 啟動 Telegram 機器人...")
-
+    app_bot = ApplicationBuilder().token(TOKEN).build()
     app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(app_bot.initialize())
-    loop.create_task(app_bot.start())
-
-import requests  # <-- 請放在程式最上方和 os 一起 import
-
-WEBHOOK_URL = f"https://telegram-bot-j6nl.onrender.com/{TOKEN}"
-requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
-
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
+    app_bot.run_polling()
