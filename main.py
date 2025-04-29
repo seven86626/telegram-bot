@@ -7,10 +7,11 @@ import os
 TOKEN = os.environ["BOT_TOKEN"]
 CREATOR_ID = 7157918161  # 你的 Telegram ID
 
+# 建立 Flask App 和 Telegram Bot
 app = Flask(__name__)
-app_bot = ApplicationBuilder().token(TOKEN).build()  # ⬅️ 提前建立！
+app_bot = ApplicationBuilder().token(TOKEN).build()
 
-# 純 Python 字典關鍵字資料（圖片為上傳至伺服器的檔名）
+# 純 Python 字典關鍵字資料
 reply_rules = {
     "NEW": {
         "media": ["NEW.jpg"],
@@ -158,74 +159,7 @@ reply_rules = {
         "button": None
     }
 }
-# 主處理函式
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.message
-    if msg is None or msg.text is None:
-        return
+None
+    }
+}
 
-    if msg.chat.type == "private" and msg.from_user.id == CREATOR_ID:
-        if msg.photo:
-            await msg.reply_text(f"📸 圖片 file_id：{msg.photo[-1].file_id}")
-        elif msg.video:
-            await msg.reply_text(f"🎥 影片 file_id：{msg.video.file_id}")
-        return
-
-    if msg.chat.type not in ["group", "supergroup"]:
-        return
-
-    key = msg.text.strip()
-    if key not in reply_rules:
-        return
-
-    rule = reply_rules[key]
-    medias = rule.get("media", [])
-    text = rule.get("text")
-    button = rule.get("button")
-
-    reply_markup = None
-    if button and button.get("text") and button.get("url"):
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]] )
-
-    if len(medias) > 1:
-        group = []
-        for f in medias:
-            ext = f.split(".")[-1].lower()
-            if ext in ["jpg", "jpeg", "png"]:
-                group.append(InputMediaPhoto(open(f"{f}", "rb")))
-            elif ext in ["mp4", "mov"]:
-                group.append(InputMediaVideo(open(f"{f}", "rb")))
-        await msg.reply_media_group(group)
-        if text or reply_markup:
-            await msg.reply_text(text or "", reply_markup=reply_markup)
-    elif len(medias) == 1:
-        f = medias[0]
-        ext = f.split(".")[-1].lower()
-        if ext in ["jpg", "jpeg", "png"]:
-            await msg.reply_photo(open(f, "rb"), caption=text, reply_markup=reply_markup)
-        elif ext in ["mp4", "mov"]:
-            await msg.reply_video(open(f, "rb"), caption=text, reply_markup=reply_markup)
-    elif text:
-        await msg.reply_text(text, reply_markup=reply_markup)
-
-# Flask 路由設定
-@app.route("/")
-def index():
-    return "Bot Running"
-
-@app.route(f"/{TOKEN}", methods=["POST"])
-async def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), app_bot.bot)
-        await app_bot.process_update(update)
-        return "ok"
-
-# 啟動 Flask + Telegram Bot
-if __name__ == "__main__":
-    print("✅ 啟動 Telegram 機器人...")
-    app_bot = ApplicationBuilder().token(TOKEN).build()
-    app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
-
-    loop = asyncio.get_event_loop()
-    loop.create_task(app_bot.start())
-    app.run(host="0.0.0.0", port=8080)
