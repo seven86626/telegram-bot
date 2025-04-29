@@ -2,20 +2,19 @@ import os
 import time
 import threading
 import requests
-import asyncio
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
-# Telegram Bot 設定
 TOKEN = os.environ["BOT_TOKEN"]
-CREATOR_ID = 7157918161
+CREATOR_ID = 7157918161  # 請確保這裡是純數字！
 
 app = Flask(__name__)
 app_bot = ApplicationBuilder().token(TOKEN).build()
 
-# ➤ 關鍵字回覆函式（請依你原本定義放這裡）
-reply_rules = {
+# ➤ 關鍵字回覆函式（可擴充更多關鍵字）
+async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reply_rules = {
     "NEW": {
         "media": ["NEW.jpg"],
         "text": None,
@@ -162,21 +161,16 @@ reply_rules = {
         "button": None
     }
 }
-# 主處理函式
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-    if msg is None or msg.text is None:
+    if not msg or not msg.text:
         return
 
-    # 回傳圖片檔 file_id 給創建者使用
+    # 私訊顯示 file_id
     if msg.chat.type == "private" and msg.from_user.id == CREATOR_ID:
         if msg.photo:
             await msg.reply_text(f"📸 圖片 file_id：{msg.photo[-1].file_id}")
         elif msg.video:
             await msg.reply_text(f"🎥 影片 file_id：{msg.video.file_id}")
-        return
-
-    if msg.chat.type not in ["group", "supergroup"]:
         return
 
     key = msg.text.strip()
@@ -189,70 +183,60 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     button = rule.get("button")
 
     reply_markup = None
-    if button and button.get("text") and button.get("url"):
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]] )
+    if button:
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]])
 
     if len(medias) > 1:
         group = []
         for f in medias:
             ext = f.split(".")[-1].lower()
-            if ext in ["jpg", "jpeg", "png"]:
-                group.append(InputMediaPhoto(open(f"{f}", "rb")))
-            elif ext in ["mp4", "mov"]:
-                group.append(InputMediaVideo(open(f"{f}", "rb")))
+            with open(f, "rb") as fobj:
+                if ext in ["jpg", "jpeg", "png"]:
+                    group.append(InputMediaPhoto(fobj.read()))
+                elif ext in ["mp4", "mov"]:
+                    group.append(InputMediaVideo(fobj.read()))
         await msg.reply_media_group(group)
         if text or reply_markup:
             await msg.reply_text(text or "", reply_markup=reply_markup)
     elif len(medias) == 1:
         f = medias[0]
         ext = f.split(".")[-1].lower()
-        if ext in ["jpg", "jpeg", "png"]:
-            await msg.reply_photo(open(f, "rb"), caption=text, reply_markup=reply_markup)
-        elif ext in ["mp4", "mov"]:
-            await msg.reply_video(open(f, "rb"), caption=text, reply_markup=reply_markup)
+        with open(f, "rb") as fobj:
+            if ext in ["jpg", "jpeg", "png"]:
+                await msg.reply_photo(fobj, caption=text, reply_markup=reply_markup)
+            elif ext in ["mp4", "mov"]:
+                await msg.reply_video(fobj, caption=text, reply_markup=reply_markup)
     elif text:
         await msg.reply_text(text, reply_markup=reply_markup)
 
+# ➤ Flask 狀態確認路由
 @app.route("/")
 def index():
     return "Bot Running"
 
-def run_flask():
-    app.run(host="0.0.0.0", port=8080)
-
-# ➤ 新增錯誤追蹤處理器
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    print(f"❌ 發生錯誤：{context.error}")
-
-# ➤ Flask webhook 路由
+# ➤ Telegram Webhook 路由
 @app.route(f"/{TOKEN}", methods=["POST"])
 async def webhook():
     update = Update.de_json(request.get_json(force=True), app_bot.bot)
     await app_bot.process_update(update)
     return "ok"
 
-# ➤ Flask 根目錄（存活用）
-@app.route("/")
-def index():
-    return "Bot Running"
-
-# ➤ Keep Awake 函式（防 Render 休眠）
+# ➤ 防 Render 自動休眠
 def keep_awake():
     while True:
         try:
             requests.get("https://telegram-bot-j6nl.onrender.com/")
         except:
             pass
-        time.sleep(600)  # 每10分鐘 ping 一次
+        time.sleep(600)  # 每 10 分鐘 ping 一次
 
-# ➤ 主程式
+# ➤ 啟動機器人
 if __name__ == "__main__":
     print("✅ 啟動 Telegram 機器人...")
 
     app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
-    app_bot.add_error_handler(error_handler)
 
-    # 設定 Webhook
+    # 設定 Webhook URL
     WEBHOOK_URL = f"https://telegram-bot-j6nl.onrender.com/{TOKEN}"
     try:
         res = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
@@ -260,10 +244,6 @@ if __name__ == "__main__":
     except Exception as e:
         print("🚫 Webhook 設定錯誤：", e)
 
-    # 啟動 bot 與 keep_alive
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(app_bot.initialize())
-    loop.create_task(app_bot.start())
-
+    # 開始 Flask 與保持喚醒
     threading.Thread(target=keep_awake).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
