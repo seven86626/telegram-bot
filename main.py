@@ -182,7 +182,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if msg is None or msg.text is None:
         return
 
-        if re.fullmatch(r"[-+*/().0-9 ]+", msg.text):
+    if re.fullmatch(r"[-+*/().0-9 ]+", msg.text):
         try:
             result = eval(msg.text)
             await msg.reply_text(f"= {result}", reply_to_message_id=msg.message_id)
