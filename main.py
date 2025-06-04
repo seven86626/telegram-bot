@@ -205,7 +205,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if key not in reply_rules:
         return
 
-    async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     member = update.chat_member
     if member.new_chat_member.status == "member":
         keyboard = InlineKeyboardMarkup([
