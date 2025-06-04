@@ -205,6 +205,36 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if key not in reply_rules:
         return
 
+    rule = reply_rules[key]
+    medias = rule.get("media", [])
+    text = rule.get("text")
+    button = rule.get("button")
+
+    reply_markup = None
+    if button and button.get("text") and button.get("url"):
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]])
+    
+    if len(medias) > 1:
+        group = []
+        for f in medias:
+            ext = f.split(".")[-1].lower()
+            if ext in ["jpg", "jpeg", "png"]:
+                group.append(InputMediaPhoto(open(f"{f}", "rb")))
+            elif ext in ["mp4", "mov"]:
+                group.append(InputMediaVideo(open(f"{f}", "rb")))
+        await msg.reply_media_group(group)
+        if text or reply_markup:
+            await msg.reply_text(text or "", reply_markup=reply_markup)
+    elif len(medias) == 1:
+        f = medias[0]
+        ext = f.split(".")[-1].lower()
+        if ext in ["jpg", "jpeg", "png"]:
+            await msg.reply_photo(open(f, "rb"), caption=text, reply_markup=reply_markup)
+        elif ext in ["mp4", "mov"]:
+            await msg.reply_video(open(f, "rb"), caption=text, reply_markup=reply_markup)
+    elif text:
+        await msg.reply_text(text, reply_markup=reply_markup)
+        
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     member = update.chat_member
     if member.new_chat_member.status == "member":
@@ -227,51 +257,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=f"Thank pretty girl {user.mention_html()}💌\nBlue Butterfly wishes you to become the richest lady💰",
             parse_mode="HTML"
         )
-
-
-    rule = reply_rules[key]
-    medias = rule.get("media", [])
-    text = rule.get("text")
-    button = rule.get("button")
-
-    reply_markup = None
-    if button and button.get("text") and button.get("url"):
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]] )
-async def daily_broadcast(app_bot):
-    while True:
-        now = datetime.datetime.now()
-        if now.hour == 11 and now.minute == 0:
-            await app_bot.bot.send_message(
-                chat_id=GROUP_ID,
-                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n\n🔔This is group message\nFor the Lady who starts work at pm12:00-am02:30"
-            )
-        if now.hour == 13 and now.minute == 0:
-            await app_bot.bot.send_message(
-                chat_id=GROUP_ID,
-                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n\n🔔This is group message\nFor the Lady who starts work at pm14:00-am04:30"
-            )
-        await asyncio.sleep(60)
-
-    if len(medias) > 1:
-        group = []
-        for f in medias:
-            ext = f.split(".")[-1].lower()
-            if ext in ["jpg", "jpeg", "png"]:
-                group.append(InputMediaPhoto(open(f"{f}", "rb")))
-            elif ext in ["mp4", "mov"]:
-                group.append(InputMediaVideo(open(f"{f}", "rb")))
-        await msg.reply_media_group(group)
-        if text or reply_markup:
-            await msg.reply_text(text or "", reply_markup=reply_markup)
-    elif len(medias) == 1:
-        f = medias[0]
-        ext = f.split(".")[-1].lower()
-        if ext in ["jpg", "jpeg", "png"]:
-            await msg.reply_photo(open(f, "rb"), caption=text, reply_markup=reply_markup)
-        elif ext in ["mp4", "mov"]:
-            await msg.reply_video(open(f, "rb"), caption=text, reply_markup=reply_markup)
-    elif text:
-        await msg.reply_text(text, reply_markup=reply_markup)
 
 @app.route("/")
 def index():
