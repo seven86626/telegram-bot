@@ -1,13 +1,25 @@
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters, ChatMemberHandler, CallbackQueryHandler
 import threading
 import os
+import asyncio
+import re
+import json
+import datetime
 
 TOKEN = os.environ["BOT_TOKEN"]
 CREATOR_ID = 7157918161  # 你的 Telegram ID
+GROUP_ID = -1001234567890  # 範例，請自行替換
 
 app = Flask(__name__)
+
+# 載入或初始化已記錄的群組 ID
+if os.path.exists("group_ids.json"):
+    with open("group_ids.json", "r") as f:
+        group_ids = json.load(f)
+else:
+    group_ids = []
 
 # 純 Python 字典關鍵字資料（圖片為上傳至 Replit 的檔名）
 reply_rules = {
@@ -156,6 +168,11 @@ reply_rules = {
         "text": "แจ้งให้เราทราบหากคุณพร้อม\nให้บริการที่ดีแก่ลูกค้า💖",
         "button": None
     },
+    "MKF": {
+       "media": [],
+       "text": "Test OK >.<",
+       "button": None
+    },
     "HB": {
     "media": [],
     "text": "อย่าให้ลคเห็นกลุ่มงานเรา\n" \
@@ -168,13 +185,34 @@ reply_rules = {
     "button": None
     }         
 }   
-# 主處理函式
+# 回覆處理
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if msg is None or msg.text is None:
         return
 
-    # 回傳圖片檔 file_id 給創建者使用
+    # 偵測啟用群發
+    if msg.text.strip() == "啟用群發":
+        chat_id = msg.chat.id
+        if chat_id not in group_ids:
+            group_ids.append(chat_id)
+            with open("group_ids.json", "w") as f:
+                json.dump(group_ids, f)
+            await msg.reply_text("✅ 本群組已啟用群發功能！")
+        else:
+            await msg.reply_text("✅ 本群組已經啟用過囉！")
+        return
+
+    # 計算表達式
+    if re.fullmatch(r"[-+*/().0-9 ]+", msg.text):
+        try:
+            result = eval(msg.text)
+            await msg.reply_text(f"= {result}", reply_to_message_id=msg.message_id)
+        except:
+            pass
+        return
+
+    # 創建者查詢 file_id
     if msg.chat.type == "private" and msg.from_user.id == CREATOR_ID:
         if msg.photo:
             await msg.reply_text(f"📸 圖片 file_id：{msg.photo[-1].file_id}")
@@ -219,6 +257,43 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text:
         await msg.reply_text(text, reply_markup=reply_markup)
 
+# 歡迎詞
+async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    member = update.chat_member
+    if member.new_chat_member.status == "member":
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("yes i agree✅", callback_data=f"agree_{member.from_user.id}")]
+        ])
+        await context.bot.send_message(
+            chat_id=member.chat.id,
+            text="Have you joined the rules channel and read and committed to comply？",
+            reply_markup=keyboard
+        )
+
+# 同意歡迎詞按鈕
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query and query.data.startswith("agree_"):
+        user = query.from_user
+        await query.answer()
+        await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text=f"Thank pretty girl {user.mention_html()}💌\nBlue Butterfly wishes you to become the richest lady💰",
+            parse_mode="HTML"
+        )
+
+# 定時群發
+async def daily_broadcast(app_bot):
+    while True:
+        now = datetime.datetime.now()
+        if now.hour in [11, 13] and now.minute == 0:
+            for gid in group_ids:
+                await app_bot.bot.send_message(
+                    chat_id=gid,
+                    text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ"
+                )
+        await asyncio.sleep(60)
+
 @app.route("/")
 def index():
     return "Bot Running"
@@ -230,5 +305,10 @@ if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
     print("✅ 啟動 Telegram 機器人...")
     app_bot = ApplicationBuilder().token(TOKEN).build()
+
+    app_bot.add_handler(ChatMemberHandler(welcome_new_member, ChatMemberHandler.CHAT_MEMBER))
+    app_bot.add_handler(CallbackQueryHandler(button_click))
+    asyncio.get_event_loop().create_task(daily_broadcast(app_bot))
+
     app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
     app_bot.run_polling()
