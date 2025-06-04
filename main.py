@@ -3,6 +3,9 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMe
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 import threading
 import os
+import asyncio
+import re
+from telegram.ext import ChatMemberHandler, CallbackQueryHandler
 
 TOKEN = os.environ["BOT_TOKEN"]
 CREATOR_ID = 7157918161  # 你的 Telegram ID
@@ -156,6 +159,11 @@ reply_rules = {
         "text": "แจ้งให้เราทราบหากคุณพร้อม\nให้บริการที่ดีแก่ลูกค้า💖",
         "button": None
     },
+    "MKF": {
+    "media": [],
+    "text": "Test OK >.<",
+    "button": None
+    },
     "HB": {
     "media": [],
     "text": "อย่าให้ลคเห็นกลุ่มงานเรา\n" \
@@ -174,6 +182,14 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if msg is None or msg.text is None:
         return
 
+        if re.fullmatch(r"[-+*/().0-9 ]+", msg.text):
+        try:
+            result = eval(msg.text)
+            await msg.reply_text(f"= {result}", reply_to_message_id=msg.message_id)
+        except:
+            pass
+        return
+
     # 回傳圖片檔 file_id 給創建者使用
     if msg.chat.type == "private" and msg.from_user.id == CREATOR_ID:
         if msg.photo:
@@ -189,6 +205,30 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if key not in reply_rules:
         return
 
+    async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    member = update.chat_member
+    if member.new_chat_member.status == "member":
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("yes i agree✅", callback_data=f"agree_{member.from_user.id}")]
+        ])
+        await context.bot.send_message(
+            chat_id=member.chat.id,
+            text="Have you joined the rules channel and read and committed to comply？",
+            reply_markup=keyboard
+        )
+
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query and query.data.startswith("agree_"):
+        user = query.from_user
+        await query.answer()
+        await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text=f"Thank pretty girl {user.mention_html()}💌\nBlue Butterfly wishes you to become the richest lady💰",
+            parse_mode="HTML"
+        )
+
+
     rule = reply_rules[key]
     medias = rule.get("media", [])
     text = rule.get("text")
@@ -197,6 +237,20 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = None
     if button and button.get("text") and button.get("url"):
         reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]] )
+async def daily_broadcast(app_bot):
+    while True:
+        now = datetime.datetime.now()
+        if now.hour == 11 and now.minute == 0:
+            await app_bot.bot.send_message(
+                chat_id=GROUP_ID,
+                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n\n🔔This is group message\nFor the Lady who starts work at pm12:00-am02:30"
+            )
+        if now.hour == 13 and now.minute == 0:
+            await app_bot.bot.send_message(
+                chat_id=GROUP_ID,
+                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n\n🔔This is group message\nFor the Lady who starts work at pm14:00-am04:30"
+            )
+        await asyncio.sleep(60)
 
     if len(medias) > 1:
         group = []
@@ -230,5 +284,10 @@ if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
     print("✅ 啟動 Telegram 機器人...")
     app_bot = ApplicationBuilder().token(TOKEN).build()
+
+    app_bot.add_handler(ChatMemberHandler(welcome_new_member, ChatMemberHandler.CHAT_MEMBER))
+    app_bot.add_handler(CallbackQueryHandler(button_click))
+    asyncio.get_event_loop().create_task(daily_broadcast(app_bot))
+
     app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), reply))
     app_bot.run_polling()
