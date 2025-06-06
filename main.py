@@ -260,7 +260,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 歡迎詞
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     member = update.chat_member
-    if member.new_chat_member.status == "member":
+    if member.new_chat_member.status == ChatMemberStatus.MEMBER:
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("yes i agree✅", callback_data=f"agree_{member.from_user.id}")]
         ])
