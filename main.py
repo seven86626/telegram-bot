@@ -286,7 +286,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def daily_broadcast(app_bot):
     while True:
         now = datetime.datetime.now()
-        if now.hour in [04] and now.minute == 0:
+        if now.hour in [4] and now.minute == 0:
             for gid in group_ids:
                 await app_bot.bot.send_message(
                     chat_id=gid,
@@ -298,7 +298,7 @@ async def daily_broadcast(app_bot):
 async def daily_broadcast(app_bot):
     while True:
         now = datetime.datetime.now()
-        if now.hour in [06] and now.minute == 0:
+        if now.hour in [6] and now.minute == 0:
             for gid in group_ids:
                 await app_bot.bot.send_message(
                     chat_id=gid,
