@@ -286,11 +286,23 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def daily_broadcast(app_bot):
     while True:
         now = datetime.datetime.now()
-        if now.hour in [11, 13] and now.minute == 0:
+        if now.hour in [04] and now.minute == 0:
             for gid in group_ids:
                 await app_bot.bot.send_message(
                     chat_id=gid,
-                    text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ"
+                    text="สวัสดีตอนเช้า 🌞💙\ตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\ฉันอยากดูในการแต่งหน้าของคุณ\🔔This is group message\For the Lady who starts work at pm12:00-am02:30"
+                )
+        await asyncio.sleep(60)
+
+# 定時群發
+async def daily_broadcast(app_bot):
+    while True:
+        now = datetime.datetime.now()
+        if now.hour in [06] and now.minute == 0:
+            for gid in group_ids:
+                await app_bot.bot.send_message(
+                    chat_id=gid,
+                    text="สวัสดีตอนเช้า 🌞💙\ตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\ฉันอยากดูในการแต่งหน้าของคุณ\🔔This is group message\For the Lady who starts work at pm14:00-am04:30"
                 )
         await asyncio.sleep(60)
 
