@@ -309,7 +309,7 @@ async def daily_broadcast(app_bot):
                 text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm14:00-am4:30"
             )
     # 每天 22:30
-    elif now.hour == 23 and now.minute == 05:
+    elif now.hour == 23 and now.minute == 13:
         for gid in group_ids:
             await app_bot.bot.send_message(
                 chat_id=gid,
