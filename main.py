@@ -1,16 +1,24 @@
 from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters, ChatMemberHandler, CallbackQueryHandler
+from telegram import (
+    Update, InlineKeyboardButton, InlineKeyboardMarkup,
+    InputMediaPhoto, InputMediaVideo
+)
+from telegram.constants import ChatMemberStatus
+from telegram.ext import (
+    ApplicationBuilder, MessageHandler, ContextTypes, filters,
+    ChatMemberHandler, CallbackQueryHandler
+)
 import threading
 import os
 import asyncio
 import re
 import json
 import datetime
+import datetime
+import pytz
 
 TOKEN = os.environ["BOT_TOKEN"]
 CREATOR_ID = 7157918161  # 你的 Telegram ID
-GROUP_ID = -1001234567890  # 範例，請自行替換
 
 app = Flask(__name__)
 
@@ -185,13 +193,12 @@ reply_rules = {
     "button": None
     }         
 }   
-# 回覆處理
+# 使用者發話處理
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if msg is None or msg.text is None:
         return
 
-    # 偵測啟用群發
     if msg.text.strip() == "啟用群發":
         chat_id = msg.chat.id
         if chat_id not in group_ids:
@@ -203,7 +210,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.reply_text("✅ 本群組已經啟用過囉！")
         return
 
-    # 計算表達式
     if re.fullmatch(r"[-+*/().0-9 ]+", msg.text):
         try:
             result = eval(msg.text)
@@ -212,7 +218,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
         return
 
-    # 創建者查詢 file_id
     if msg.chat.type == "private" and msg.from_user.id == CREATOR_ID:
         if msg.photo:
             await msg.reply_text(f"📸 圖片 file_id：{msg.photo[-1].file_id}")
@@ -234,16 +239,16 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = None
     if button and button.get("text") and button.get("url"):
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]] )
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(button["text"], url=button["url"])]])
 
     if len(medias) > 1:
         group = []
         for f in medias:
             ext = f.split(".")[-1].lower()
             if ext in ["jpg", "jpeg", "png"]:
-                group.append(InputMediaPhoto(open(f"{f}", "rb")))
+                group.append(InputMediaPhoto(open(f, "rb")))
             elif ext in ["mp4", "mov"]:
-                group.append(InputMediaVideo(open(f"{f}", "rb")))
+                group.append(InputMediaVideo(open(f, "rb")))
         await msg.reply_media_group(group)
         if text or reply_markup:
             await msg.reply_text(text or "", reply_markup=reply_markup)
@@ -260,7 +265,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 歡迎詞
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     member = update.chat_member
-    if member.new_chat_member.status == ChatMemberStatus.MEMBER:
+    if member.status == ChatMemberStatus.MEMBER and member.old_chat_member.status in [ChatMemberStatus.LEFT, ChatMemberStatus.KICKED]:
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("yes i agree✅", callback_data=f"agree_{member.from_user.id}")]
         ])
@@ -270,7 +275,7 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=keyboard
         )
 
-# 同意歡迎詞按鈕
+# 同意按鈕
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query and query.data.startswith("agree_"):
@@ -285,34 +290,44 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 定時群發
 async def daily_broadcast(app_bot):
     while True:
-        now = datetime.datetime.now()
-        if now.hour in [4] and now.minute == 0:
-            for gid in group_ids:
-                await app_bot.bot.send_message(
-                    chat_id=gid,
-                    text="สวัสดีตอนเช้า 🌞💙\ตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\ฉันอยากดูในการแต่งหน้าของคุณ\🔔This is group message\For the Lady who starts work at pm12:00-am02:30"
-                )
-        await asyncio.sleep(60)
+    tz = pytz.timezone("Asia/Taipei")
+    now = datetime.datetime.now(tz)
 
-# 定時群發
-async def daily_broadcast(app_bot):
-    while True:
-        now = datetime.datetime.now()
-        if now.hour in [6] and now.minute == 0:
-            for gid in group_ids:
-                await app_bot.bot.send_message(
-                    chat_id=gid,
-                    text="สวัสดีตอนเช้า 🌞💙\ตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\ฉันอยากดูในการแต่งหน้าของคุณ\🔔This is group message\For the Lady who starts work at pm14:00-am04:30"
-                )
-        await asyncio.sleep(60)
+    # 每天 11:00
+    if now.hour == 11 and now.minute == 0:
+        for gid in group_ids:
+            await app_bot.bot.send_message(
+                chat_id=gid,
+                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm12:00-am2:30"
+            )
 
+    # 每天 13:00
+    elif now.hour == 13 and now.minute == 0:
+        for gid in group_ids:
+            await app_bot.bot.send_message(
+                chat_id=gid,
+                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm14:00-am4:30"
+            )
+    # 每天 22:30
+    elif now.hour == 22 and now.minute == 30:
+        for gid in group_ids:
+            await app_bot.bot.send_message(
+                chat_id=gid,
+                text="Robot testing..."
+            )
+
+    await asyncio.sleep(60)
+
+# Flask 主頁
 @app.route("/")
 def index():
     return "Bot Running"
 
+# Flask 線程
 def run_flask():
     app.run(host="0.0.0.0", port=8080)
 
+# 主程式啟動點
 if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
     print("✅ 啟動 Telegram 機器人...")
