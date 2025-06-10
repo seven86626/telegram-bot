@@ -290,8 +290,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 定時群發
 async def daily_broadcast(app_bot):
     while True:
-    tz = pytz.timezone("Asia/Taipei")
-    now = datetime.datetime.now(tz)
+        tz = pytz.timezone("Asia/Taipei")
+        now = datetime.datetime.now(tz)
 
     # 每天 11:00
     if now.hour == 11 and now.minute == 0:
@@ -309,7 +309,7 @@ async def daily_broadcast(app_bot):
                 text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm14:00-am4:30"
             )
     # 每天 22:30
-    elif now.hour == 23 and now.minute == 16:
+    elif now.hour == 23 and now.minute == 25:
         for gid in group_ids:
             await app_bot.bot.send_message(
                 chat_id=gid,
