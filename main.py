@@ -290,7 +290,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 定時群發
 async def daily_broadcast(app_bot):
     tz = pytz.timezone("Asia/Taipei")
-    already_sent = {"11:00": False, "13:00": False, "23:50": False}
+    already_sent = {"11:00": False, "13:00": False, "01:00": False}
 
     while True:
         now = datetime.datetime.now(tz)
@@ -312,13 +312,13 @@ async def daily_broadcast(app_bot):
                 )
             already_sent["13:00"] = True
 
-        elif current_time == "23:50" and not already_sent["23:50"]:
+        elif current_time == "01:00" and not already_sent["01:00"]:
             for gid in group_ids:
                 await app_bot.bot.send_message(
                     chat_id=gid,
                     text="🧪 Robot testing..."
                 )
-            already_sent["23:50"] = True
+            already_sent["01:00"] = True
 
         # 每天凌晨 00:01 重設狀態
         if current_time == "00:01":
