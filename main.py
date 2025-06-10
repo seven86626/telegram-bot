@@ -289,34 +289,42 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # 定時群發
 async def daily_broadcast(app_bot):
+    tz = pytz.timezone("Asia/Taipei")
+    already_sent = {"11:00": False, "13:00": False, "23:35": False}
+
     while True:
-        tz = pytz.timezone("Asia/Taipei")
         now = datetime.datetime.now(tz)
+        current_time = now.strftime("%H:%M")
 
-    # 每天 11:00
-    if now.hour == 11 and now.minute == 0:
-        for gid in group_ids:
-            await app_bot.bot.send_message(
-                chat_id=gid,
-                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm12:00-am2:30"
-            )
+        if current_time == "11:00" and not already_sent["11:00"]:
+            for gid in group_ids:
+                await app_bot.bot.send_message(
+                    chat_id=gid,
+                    text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm12:00-am2:30"
+                )
+            already_sent["11:00"] = True
 
-    # 每天 13:00
-    elif now.hour == 13 and now.minute == 0:
-        for gid in group_ids:
-            await app_bot.bot.send_message(
-                chat_id=gid,
-                text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm14:00-am4:30"
-            )
-    # 每天 22:30
-    elif now.hour == 23 and now.minute == 35:
-        for gid in group_ids:
-            await app_bot.bot.send_message(
-                chat_id=gid,
-                text="Robot testing..."
-            )
+        elif current_time == "13:00" and not already_sent["13:00"]:
+            for gid in group_ids:
+                await app_bot.bot.send_message(
+                    chat_id=gid,
+                    text="สวัสดีตอนเช้า 🌞💙\nตอนนี่ถ่ายรูปเซฟฟี่ให้ฉันดูหน่อย\nฉันอยากดูในการแต่งหน้าของคุณ\n🔔This is group message\nFor the Lady who starts work at pm14:00-am4:30"
+                )
+            already_sent["13:00"] = True
 
-    await asyncio.sleep(60)
+        elif current_time == "23:42" and not already_sent["23:42"]:
+            for gid in group_ids:
+                await app_bot.bot.send_message(
+                    chat_id=gid,
+                    text="🧪 Robot testing..."
+                )
+            already_sent["23:42"] = True
+
+        # 每天凌晨 00:01 重設狀態
+        if current_time == "00:01":
+            already_sent = {k: False for k in already_sent}
+
+        await asyncio.sleep(30)
 
 # Flask 主頁
 @app.route("/")
